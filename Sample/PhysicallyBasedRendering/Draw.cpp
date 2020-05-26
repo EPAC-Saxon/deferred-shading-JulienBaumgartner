@@ -50,7 +50,7 @@ const std::shared_ptr<sgl::Texture>& Draw::GetDrawTexture() const
    // return deferred_textures_[2]; // Will give you the MRO.
    // return deferred_textures_[3]; // Will give you the Position.
    // return lighting_textures_[0]; // Will give you the albedo (again).
-   // return lighting_textures_[1]; // Will give you the lighting.
+    return lighting_textures_[1]; // Will give you the lighting.
 	return final_texture_; // Will give you the final image.
 }
 
@@ -68,10 +68,8 @@ void Draw::RunDraw(const double dt)
 	{
 		pbr_program_->Use();
 		pbr_program_->UniformVector3("camera_position", device_->GetCamera().GetPosition());
-		//pbr_program_->UniformVector3("camera_position", {0.0, 0.0, 0.0});
 		device_->DrawMultiTextures(deferred_textures_, dt);
-
-		//deferred_textures_[0] = lighting_textures_[0];
+		lighting_textures_[0] = deferred_textures_[0];
 	}
 
 	if (lighting_program_ != nullptr)
@@ -80,7 +78,8 @@ void Draw::RunDraw(const double dt)
 		lighting_program_->UniformVector3("camera_position", device_->GetCamera().GetPosition());
 		light_manager_->RegisterToProgram(lighting_program_);
 		lighting_textures_[1] = ComputeLighting(deferred_textures_);
-		final_texture_ = AddBloom(lighting_textures_[1]);
+		auto combine_texture = Combine(lighting_textures_);
+		final_texture_ = AddBloom(combine_texture);
 	}
 }
 
@@ -136,27 +135,27 @@ std::shared_ptr<sgl::Texture> Draw::ComputeLighting(
 	frame.BindAttach(render);
 	render.BindStorage(in_textures[0]->GetSize());
 	frame.BindTexture(*combine_texture);
+	frame.DrawBuffers(in_textures.size());
 
-	std::string textures_names[4] = { "Color", "Normal", "Metallic", "Roughness" };
-	
-	auto program = sgl::CreateProgram("PhysicallyBasedRendering");
-	auto quad = sgl::CreateQuadMesh(program);
+	auto quad = sgl::CreateQuadMesh(lighting_program_);
+
+	sgl::TextureManager texture_manager;
+
+	std::string textures_names[4] = { "Ambient", "Normal", "MetalRoughAO", "Position" };
+	for (int i = 0; i < 4; ++i)
+	{
+		texture_manager.AddTexture(textures_names[i], in_textures[i]);
+		quad->SetTextures({ textures_names[i] });
+	}
 
 	// Set the view port for rendering.
 	glViewport(0, 0, in_textures[0]->GetSize().first, in_textures[0]->GetSize().second);
 
+	// Clear the screen.
+	glClearColor(.2f, 1.f, .2f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	for (int i = 0; i < 4; ++i)
-	{
-		sgl::TextureManager texture_manager;
-		texture_manager.AddTexture(textures_names[i], in_textures[i]);
-		// Clear the screen.
-		glClearColor(.2f, 1.f, .2f, 1.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
-
-		quad->SetTextures({ textures_names[i] });
-		quad->Draw(texture_manager);
-	}
+	quad->Draw(texture_manager);
 
 	return combine_texture;
 

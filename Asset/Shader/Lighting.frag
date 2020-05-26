@@ -16,6 +16,30 @@ uniform int light_max;
 
 const float PI = 3.14159265359;
 
+  
+vec3 albedo = pow(texture(Ambient, vert_texcoord).rgb, vec3(2.2));
+vec3 normal = texture(Normal, vert_texcoord).xyz;
+vec3 vert_world_position = texture(Position, vert_texcoord).rgb;
+float metallic = texture(MetalRoughAO, vert_texcoord).r;
+
+// ----------------------------------------------------------------------------
+
+vec3 getNormalFromMap(vec3 normalMapPosition)
+{
+    vec3 tangentNormal = normalMapPosition * 2.0 - 1.0;
+
+    vec3 Q1  = dFdx(vert_world_position);
+    vec3 Q2  = dFdy(vert_world_position);
+    vec2 st1 = dFdx(vert_texcoord);
+    vec2 st2 = dFdy(vert_texcoord);
+
+    vec3 N   = normalize(texture(Normal, vert_texcoord).xyz);
+    vec3 T   = normalize(Q1*st2.t - Q2*st1.t);
+    vec3 B   = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+
+    return normalize(TBN * tangentNormal);
+}
 
 // ----------------------------------------------------------------------------
 
@@ -68,14 +92,23 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 
 // -----------------------------------------------------------------------------
 
+
+
+
 void main()
 {
+
+   vec3 N = getNormalFromMap(normal);
+   vec3 V = normalize(camera_position - vert_world_position);
+   float roughness  = 0.2;
+   vec3 F0 = vec3(0.04); 
+   F0 = mix(F0, albedo, metallic);
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
 
-	#if 0
-    for (int i = 0; i < light_max; ++i)
+	#if 1
+    for (int i = 0; i < 32; ++i)
     {
         // calculate per-light radiance
         vec3 L = normalize(light_position[i] - vert_world_position);
@@ -114,11 +147,7 @@ void main()
         // won't multiply by kS again
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
-#endif
+    #endif
 
-
-   
-
-    
     frag_color = vec4(Lo, 1.0);
 }

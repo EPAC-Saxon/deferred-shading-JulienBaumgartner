@@ -109,7 +109,7 @@ namespace sgl {
 		{
 			buffers[i] = GLenum(GL_COLOR_ATTACHMENT0+i);
 		}
-	
+
 		glDrawBuffers(size, buffers);
 		error_.Display(__FILE__, __LINE__ - 1);
 	}

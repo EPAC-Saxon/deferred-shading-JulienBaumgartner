@@ -75,7 +75,6 @@ namespace sgl {
 		// Setup the camera.
 		SetupCamera();
 
-
 		Frame frame{};
 		Render render{};
 		frame.BindAttach(render);
@@ -91,9 +90,11 @@ namespace sgl {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		error_.Display(__FILE__, __LINE__ - 1);
 
+		int i = 0;
 		for (const auto& texture : out_textures)
 		{
-			frame.BindTexture(*texture);
+			frame.BindTexture(*texture, Frame::GetFrameColorAttachment(i));
+			++i;
 		}
 		frame.DrawBuffers(out_textures.size());
 
