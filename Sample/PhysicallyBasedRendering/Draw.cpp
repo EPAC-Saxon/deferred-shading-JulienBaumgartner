@@ -31,12 +31,27 @@ void Draw::Startup(const std::pair<std::uint32_t, std::uint32_t> size)
 	}
 	device_->SetSceneTree(scene_tree);
 
-#pragma message ("You have to complete this code!")
+	deferred_textures_.push_back(std::make_shared<sgl::Texture>(size, sgl::PixelElementSize::FLOAT));
+	deferred_textures_.push_back(std::make_shared<sgl::Texture>(size, sgl::PixelElementSize::FLOAT));
+	deferred_textures_.push_back(std::make_shared<sgl::Texture>(size, sgl::PixelElementSize::FLOAT));
+	deferred_textures_.push_back(std::make_shared<sgl::Texture>(size, sgl::PixelElementSize::FLOAT));
+
+	lighting_textures_.push_back(nullptr);
+	lighting_textures_.push_back(nullptr);
+
+	light_manager_ = CreateLightManager();
+	lighting_program_ = sgl::CreateProgram("Lighting");
 }
 
 const std::shared_ptr<sgl::Texture>& Draw::GetDrawTexture() const
 {
-	return final_texture_;
+   // return deferred_textures_[0]; // Will give you the albedo.
+   // return deferred_textures_[1]; // Will give you the normal.
+   // return deferred_textures_[2]; // Will give you the MRO.
+   // return deferred_textures_[3]; // Will give you the Position.
+   // return lighting_textures_[0]; // Will give you the albedo (again).
+   // return lighting_textures_[1]; // Will give you the lighting.
+	return final_texture_; // Will give you the final image.
 }
 
 void Draw::RunDraw(const double dt)
@@ -49,7 +64,24 @@ void Draw::RunDraw(const double dt)
 	sgl::Camera cam(glm::vec3(position * rot_y), { 0.f, 0.f, 0.f });
 	device_->SetCamera(cam);
 
-#pragma message ("You have to complete this code!")
+	if (pbr_program_ != nullptr)
+	{
+		pbr_program_->Use();
+		pbr_program_->UniformVector3("camera_position", device_->GetCamera().GetPosition());
+		//pbr_program_->UniformVector3("camera_position", {0.0, 0.0, 0.0});
+		device_->DrawMultiTextures(deferred_textures_, dt);
+
+		//deferred_textures_[0] = lighting_textures_[0];
+	}
+
+	if (lighting_program_ != nullptr)
+	{
+		lighting_program_->Use();
+		lighting_program_->UniformVector3("camera_position", device_->GetCamera().GetPosition());
+		light_manager_->RegisterToProgram(lighting_program_);
+		lighting_textures_[1] = ComputeLighting(deferred_textures_);
+		final_texture_ = AddBloom(lighting_textures_[1]);
+	}
 }
 
 void Draw::Delete() {}
@@ -98,8 +130,36 @@ std::shared_ptr<sgl::LightManager> Draw::CreateLightManager() const
 std::shared_ptr<sgl::Texture> Draw::ComputeLighting(
 	const std::vector<std::shared_ptr<sgl::Texture>>& in_textures) const
 {
-#pragma message ("You have to complete this code!")
-	return nullptr;
+	auto combine_texture = std::make_shared<sgl::Texture>(in_textures[0]->GetSize(), sgl::PixelElementSize::FLOAT);
+	sgl::Frame frame;
+	sgl::Render render;
+	frame.BindAttach(render);
+	render.BindStorage(in_textures[0]->GetSize());
+	frame.BindTexture(*combine_texture);
+
+	std::string textures_names[4] = { "Color", "Normal", "Metallic", "Roughness" };
+	
+	auto program = sgl::CreateProgram("PhysicallyBasedRendering");
+	auto quad = sgl::CreateQuadMesh(program);
+
+	// Set the view port for rendering.
+	glViewport(0, 0, in_textures[0]->GetSize().first, in_textures[0]->GetSize().second);
+
+
+	for (int i = 0; i < 4; ++i)
+	{
+		sgl::TextureManager texture_manager;
+		texture_manager.AddTexture(textures_names[i], in_textures[i]);
+		// Clear the screen.
+		glClearColor(.2f, 1.f, .2f, 1.0f);
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		quad->SetTextures({ textures_names[i] });
+		quad->Draw(texture_manager);
+	}
+
+	return combine_texture;
+
 }
 
 std::shared_ptr<sgl::Texture> Draw::AddBloom(
