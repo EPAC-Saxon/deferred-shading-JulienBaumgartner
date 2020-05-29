@@ -50,7 +50,7 @@ const std::shared_ptr<sgl::Texture>& Draw::GetDrawTexture() const
    // return deferred_textures_[2]; // Will give you the MRO.
    // return deferred_textures_[3]; // Will give you the Position.
    // return lighting_textures_[0]; // Will give you the albedo (again).
-    return lighting_textures_[1]; // Will give you the lighting.
+   // return lighting_textures_[1]; // Will give you the lighting.
 	return final_texture_; // Will give you the final image.
 }
 
@@ -145,8 +145,8 @@ std::shared_ptr<sgl::Texture> Draw::ComputeLighting(
 	for (int i = 0; i < 4; ++i)
 	{
 		texture_manager.AddTexture(textures_names[i], in_textures[i]);
-		quad->SetTextures({ textures_names[i] });
 	}
+	quad->SetTextures({ "Ambient", "Normal", "MetalRoughAO", "Position" });
 
 	// Set the view port for rendering.
 	glViewport(0, 0, in_textures[0]->GetSize().first, in_textures[0]->GetSize().second);
