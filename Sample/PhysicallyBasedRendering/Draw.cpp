@@ -50,7 +50,7 @@ const std::shared_ptr<sgl::Texture>& Draw::GetDrawTexture() const
    // return deferred_textures_[2]; // Will give you the MRO.
    // return deferred_textures_[3]; // Will give you the Position.
    // return lighting_textures_[0]; // Will give you the albedo (again).
-   // return lighting_textures_[1]; // Will give you the lighting.
+    return lighting_textures_[1]; // Will give you the lighting.
 	return final_texture_; // Will give you the final image.
 }
 
