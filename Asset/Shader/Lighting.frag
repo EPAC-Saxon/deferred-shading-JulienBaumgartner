@@ -101,9 +101,6 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 void main()
 {
 
-    //frag_color = vec4(texture(Ambient, vert_texcoord).rgb, 1.0);
-
-#if 1
     if (texture(MetalRoughAO, vert_texcoord).rgb == vec3(0.0, 0.0, 0.0))
     {
         frag_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -161,5 +158,4 @@ void main()
         frag_color = vec4(Lo, 1.0);
     }
     
-#endif
 }
